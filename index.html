@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Question Organizer (Offline)</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1a30;
+      --panel2:#0c162a;
+      --text:#e8eefc;
+      --muted:#a8b3cf;
+      --accent:#6aa6ff;
+      --accent2:#7cffa6;
+      --danger:#ff6a6a;
+      --border:rgba(255,255,255,.12);
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background: radial-gradient(1200px 700px at 20% 0%, #152a55 0%, var(--bg) 60%);
+      color:var(--text);
+    }
+    header{
+      padding:22px 18px 10px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    header h1{
+      margin:0 0 6px;
+      font-size:22px;
+      letter-spacing:.2px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    header p{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:14px 18px 28px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    @media (min-width: 980px){
+      .wrap{
+        grid-template-columns: 1.1fr .9fr;
+        align-items:start;
+      }
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card .head{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--border);
+      background: rgba(0,0,0,.12);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .card .head h2{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      color:#dbe6ff;
+    }
+    .meta{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .badge{
+      font-size:12px;
+      padding:4px 9px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: rgba(255,255,255,.03);
+      color: #dbe6ff;
+    }
+    .card .body{
+      padding:14px;
+    }
+    label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:12px 0 6px;
+    }
+    input[type="text"], input[type="number"], select, textarea{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.20);
+      color:var(--text);
+      padding:10px 11px;
+      outline:none;
+      font-size:14px;
+    }
+    textarea{
+      min-height:220px;
+      resize:vertical;
+      font-family:var(--mono);
+      line-height:1.35;
+    }
+    input::placeholder, textarea::placeholder{ color: rgba(232,238,252,.45); }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    @media (min-width: 620px){
+      .row.two{ grid-template-columns: 1.2fr .8fr; }
+      .row.three{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .btns{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+    button{
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:600;
+      cursor:pointer;
+      color:#081020;
+      background: var(--accent);
+      transition: transform .05s ease, filter .15s ease;
+      user-select:none;
+    }
+    button:hover{ filter:brightness(1.05); }
+    button:active{ transform: translateY(1px); }
+    button.secondary{
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      border:1px solid var(--border);
+    }
+    button.danger{
+      background: rgba(255,106,106,.16);
+      color: #ffd7d7;
+      border:1px solid rgba(255,106,106,.35);
+    }
+    button.good{
+      background: rgba(124,255,166,.18);
+      color:#d8ffe6;
+      border:1px solid rgba(124,255,166,.35);
+    }
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:8px;
+      line-height:1.35;
+    }
+    .error{
+      font-size:12px;
+      color:#ffd0d0;
+      background: rgba(255,106,106,.12);
+      border:1px solid rgba(255,106,106,.35);
+      padding:10px 11px;
+      border-radius:12px;
+      display:none;
+      margin-top:10px;
+    }
+    .error.show{ display:block; }
+
+    /* Output blocks */
+    .out-controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .outbox{
+      border:1px solid var(--border);
+      border-radius:12px;
+      background: rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+    .outbox .toolbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:10px;
+      border-bottom:1px solid var(--border);
+      background: rgba(0,0,0,.12);
+      flex-wrap:wrap;
+    }
+    .outbox .toolbar .title{
+      font-weight:700;
+      font-size:13px;
+      color:#dbe6ff;
+    }
+    pre{
+      margin:0;
+      padding:12px;
+      max-height:360px;
+      overflow:auto;
+      font-family: var(--mono);
+      font-size:13px;
+      line-height:1.35;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .small{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .kbd{
+      font-family: var(--mono);
+      font-size:12px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background: rgba(255,255,255,.05);
+      color:#dbe6ff;
+    }
+    .footer-note{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+    .list{
+      margin:10px 0 0;
+      padding-left:18px;
+      color:var(--muted);
+      font-size:13px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>
+    Structured Question Organizer
+    <span class="badge">Offline • GitHub Pages Ready</span>
+  </h1>
+  <p>
+    Paste <b>fully formatted questions</b> (question + options + correct answer + explanation). The app stores the text as an
+    <b>immutable raw string</b> and exports two formatted TXT files: grouped by <b>Lecture</b> and grouped by <b>Batch</b>.
+  </p>
+</header>
+
+<main class="wrap">
+  <!-- LEFT: Inputs -->
+  <section class="card" aria-label="Inputs">
+    <div class="head">
+      <h2>Inputs</h2>
+      <div class="meta">
+        <span class="badge" id="countBadge">Saved: 0</span>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="row two">
+        <div>
+          <label for="lecture">Lecture Name (persistent until “Change Lecture”)</label>
+          <input type="text" id="lecture" placeholder="e.g., Obstetrics — Vulva Blood Supply" autocomplete="off" />
+        </div>
+
+        <div>
+          <label for="page">Page Number (clears on save)</label>
+          <input type="number" id="page" min="0" step="1" placeholder="e.g., 35" />
+        </div>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="batch">Batch (persists unless changed)</label>
+          <select id="batch">
+            <option>Iris</option>
+            <option>Endorphin</option>
+            <option>Aorta</option>
+            <option>Vagus</option>
+            <option>Overdose</option>
+            <option>WA</option>
+            <option>Serotonin</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="year">Year (persists unless changed)</label>
+          <select id="year">
+            <option>4th year</option>
+            <option>5th year</option>
+          </select>
+        </div>
+
+        <div>
+          <label>&nbsp;</label>
+          <button class="danger" id="changeLectureBtn" type="button" title="Clears ONLY lecture name">
+            Change Lecture
+          </button>
+        </div>
+      </div>
+
+      <label for="question">Question Input (RAW TEXT ONLY — stored exactly as pasted)</label>
+      <textarea id="question" placeholder="Paste the FULL pre-formatted question here (do not edit)..."></textarea>
+
+      <div class="btns">
+        <button id="saveBtn" type="button">Save Question</button>
+        <button class="good" id="generateBtn" type="button">Generate Output</button>
+        <button class="secondary" id="clearSessionBtn" type="button" title="Optional: clears stored entries and session settings">
+          Reset App (optional)
+        </button>
+      </div>
+
+      <div class="hint">
+        <b>Save Question</b> clears only <span class="kbd">Question</span> and <span class="kbd">Page</span>.
+        <b>Lecture</b>, <b>Batch</b>, and <b>Year</b> remain unchanged unless you manually change them.
+      </div>
+
+      <div id="errorBox" class="error" role="alert"></div>
+
+      <div class="footer-note">
+        <b>Note:</b> This is fully offline. Nothing is uploaded anywhere. (Session persistence uses <span class="kbd">sessionStorage</span> only.)
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Outputs -->
+  <section class="card" aria-label="Outputs">
+    <div class="head">
+      <h2>Outputs</h2>
+      <div class="out-controls">
+        <button class="secondary" id="downloadLectureBtn" type="button" disabled>Download Lecture TXT</button>
+        <button class="secondary" id="downloadBatchBtn" type="button" disabled>Download Batch TXT</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="outbox" style="margin-bottom:12px;">
+        <div class="toolbar">
+          <div class="title">Output 1 — Grouped by Lecture</div>
+          <div class="btns" style="margin:0;">
+            <button class="secondary" id="copyLectureBtn" type="button" disabled>Copy</button>
+          </div>
+        </div>
+        <pre id="lectureOut" aria-label="Lecture output"></pre>
+      </div>
+
+      <div class="outbox">
+        <div class="toolbar">
+          <div class="title">Output 2 — Grouped by Batch</div>
+          <div class="btns" style="margin:0;">
+            <button class="secondary" id="copyBatchBtn" type="button" disabled>Copy</button>
+          </div>
+        </div>
+        <pre id="batchOut" aria-label="Batch output"></pre>
+      </div>
+
+      <ul class="list">
+        <li>Uses <b>###</b> between every question.</li>
+        <li>Uses <b>/////</b> between groups (lectures or batches).</li>
+        <li>Question text is inserted <b>unchanged</b>. The app does not parse or modify it.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // -----------------------------
+  // Session State (sessionStorage)
+  // -----------------------------
+  const STORAGE_KEY = "qOrganizer.session.v1";
+
+  const defaultState = {
+    lecture: "",
+    batch: "Iris",
+    year: "4th year",
+    entries: [] // { lecture, batch, year, text, page }
+  };
+
+  function loadState() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return structuredClone(defaultState);
+      const parsed = JSON.parse(raw);
+
+      // Defensive normalization (no content parsing, just ensuring fields exist)
+      return {
+        lecture: typeof parsed.lecture === "string" ? parsed.lecture : "",
+        batch: typeof parsed.batch === "string" ? parsed.batch : "Iris",
+        year: typeof parsed.year === "string" ? parsed.year : "4th year",
+        entries: Array.isArray(parsed.entries) ? parsed.entries : []
+      };
+    } catch {
+      return structuredClone(defaultState);
+    }
+  }
+
+  function saveState() {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  const state = loadState();
+
+  // -----------------------------
+  // DOM
+  // -----------------------------
+  const lectureEl = document.getElementById("lecture");
+  const batchEl = document.getElementById("batch");
+  const yearEl = document.getElementById("year");
+  const questionEl = document.getElementById("question");
+  const pageEl = document.getElementById("page");
+
+  const saveBtn = document.getElementById("saveBtn");
+  const changeLectureBtn = document.getElementById("changeLectureBtn");
+  const generateBtn = document.getElementById("generateBtn");
+  const clearSessionBtn = document.getElementById("clearSessionBtn");
+
+  const lectureOutEl = document.getElementById("lectureOut");
+  const batchOutEl = document.getElementById("batchOut");
+
+  const downloadLectureBtn = document.getElementById("downloadLectureBtn");
+  const downloadBatchBtn = document.getElementById("downloadBatchBtn");
+  const copyLectureBtn = document.getElementById("copyLectureBtn");
+  const copyBatchBtn = document.getElementById("copyBatchBtn");
+
+  const countBadge = document.getElementById("countBadge");
+  const errorBox = document.getElementById("errorBox");
+
+  // -----------------------------
+  // Helpers
+  // -----------------------------
+  function setError(msg) {
+    if (!msg) {
+      errorBox.textContent = "";
+      errorBox.classList.remove("show");
+      return;
+    }
+    errorBox.textContent = msg;
+    errorBox.classList.add("show");
+  }
+
+  function updateBadge() {
+    countBadge.textContent = `Saved: ${state.entries.length}`;
+  }
+
+  function filenameSafe(str) {
+    return (str || "output")
+      .replace(/[\/\\?%*:|"<>]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "output";
+  }
+
+  function downloadText(filename, content) {
+    // If download is not supported, outputs are still displayed in PRE blocks.
+    try {
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyToClipboard(text) {
+    // Modern clipboard API + fallback.
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  function enableOutputControls(enabled) {
+    downloadLectureBtn.disabled = !enabled;
+    downloadBatchBtn.disabled = !enabled;
+    copyLectureBtn.disabled = !enabled;
+    copyBatchBtn.disabled = !enabled;
+  }
+
+  // -----------------------------
+  // Output Builders (NO parsing, NO modification of question text)
+  // -----------------------------
+  function buildLectureOutput(entries) {
+    // Group by lecture in order of first appearance.
+    const lectureOrder = [];
+    const map = new Map();
+
+    for (const e of entries) {
+      const key = e.lecture || "";
+      if (!map.has(key)) {
+        map.set(key, []);
+        lectureOrder.push(key);
+      }
+      map.get(key).push(e);
+    }
+
+    const sections = [];
+    for (const lecture of lectureOrder) {
+      const secLines = [];
+      secLines.push(lecture);
+
+      for (const e of map.get(lecture)) {
+        // Insert raw question text EXACTLY as stored
+        secLines.push(e.text);
+        secLines.push(`${e.batch} - ${e.year}`);
+        secLines.push(`P(${e.page})`);
+        secLines.push("###");
+      }
+
+      sections.push(secLines.join("\n"));
+    }
+
+    return sections.join("\n/////\n");
+  }
+
+  function buildBatchOutput(entries) {
+    // Group by batch-year in order of first appearance.
+    const order = [];
+    const map = new Map();
+
+    for (const e of entries) {
+      const key = `${e.batch} - ${e.year}`;
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key).push(e);
+    }
+
+    const sections = [];
+    for (const key of order) {
+      const secLines = [];
+      secLines.push(key);
+      secLines.push(""); // spacing after header
+
+      for (const e of map.get(key)) {
+        secLines.push(e.text);
+        secLines.push(`${e.batch} - ${e.year}`);
+        secLines.push(`P(${e.page})`);
+        secLines.push("###");
+      }
+
+      sections.push(secLines.join("\n"));
+    }
+
+    return sections.join("\n/////\n");
+  }
+
+  // -----------------------------
+  // Initialize UI from state
+  // -----------------------------
+  function syncUIFromState() {
+    lectureEl.value = state.lecture;
+    batchEl.value = state.batch;
+    yearEl.value = state.year;
+    updateBadge();
+  }
+
+  syncUIFromState();
+
+  // Keep persistent inputs in sync with state
+  lectureEl.addEventListener("input", () => {
+    state.lecture = lectureEl.value; // no trimming
+    saveState();
+  });
+
+  batchEl.addEventListener("change", () => {
+    state.batch = batchEl.value;
+    saveState();
+  });
+
+  yearEl.addEventListener("change", () => {
+    state.year = yearEl.value;
+    saveState();
+  });
+
+  // -----------------------------
+  // Save Question
+  // -----------------------------
+  saveBtn.addEventListener("click", () => {
+    setError("");
+
+    const lecture = lectureEl.value; // keep as-is
+    const batch = batchEl.value;
+    const year = yearEl.value;
+    const text = questionEl.value;   // RAW TEXT ONLY
+    const page = pageEl.value;       // keep as string/number input; output expects what's entered
+
+    // Minimal validation (does not modify question content)
+    if (!lecture) return setError("Lecture Name is required (it persists until you click “Change Lecture”).");
+    if (!text) return setError("Question Input is empty. Paste the FULL formatted question first.");
+    if (page === "" || page === null) return setError("Page Number is required.");
+
+    state.entries.push({
+      lecture,
+      batch,
+      year,
+      text,  // stored exactly as textarea value
+      page
+    });
+
+    // After save:
+    // - Clear ONLY question + page
+    questionEl.value = "";
+    pageEl.value = "";
+
+    // - Lecture remains unchanged
+    // - Batch and Year remain unchanged
+    // State already holds them.
+    saveState();
+    updateBadge();
+  });
+
+  // -----------------------------
+  // Change Lecture (clears ONLY lecture name)
+  // -----------------------------
+  changeLectureBtn.addEventListener("click", () => {
+    setError("");
+    state.lecture = "";
+    lectureEl.value = "";
+    saveState();
+    // Does NOT clear saved questions, batch, or year
+  });
+
+  // -----------------------------
+  // Generate Output
+  // -----------------------------
+  let lastLectureText = "";
+  let lastBatchText = "";
+
+  generateBtn.addEventListener("click", () => {
+    setError("");
+
+    if (!state.entries.length) {
+      enableOutputControls(false);
+      lectureOutEl.textContent = "";
+      batchOutEl.textContent = "";
+      return setError("No saved questions yet. Save at least one question before generating output.");
+    }
+
+    lastLectureText = buildLectureOutput(state.entries);
+    lastBatchText = buildBatchOutput(state.entries);
+
+    lectureOutEl.textContent = lastLectureText;
+    batchOutEl.textContent = lastBatchText;
+
+    enableOutputControls(true);
+  });
+
+  // -----------------------------
+  // Download Buttons
+  // -----------------------------
+  downloadLectureBtn.addEventListener("click", () => {
+    const name = filenameSafe(state.lecture || "lecture-grouped");
+    const ok = downloadText(`${name} - grouped-by-lecture.txt`, lastLectureText || "");
+    if (!ok) setError("Download not supported in this browser. You can still copy the output from the text blocks.");
+  });
+
+  downloadBatchBtn.addEventListener("click", () => {
+    const ok = downloadText(`grouped-by-batch.txt`, lastBatchText || "");
+    if (!ok) setError("Download not supported in this browser. You can still copy the output from the text blocks.");
+  });
+
+  // -----------------------------
+  // Copy Buttons
+  // -----------------------------
+  copyLectureBtn.addEventListener("click", async () => {
+    const ok = await copyToClipboard(lastLectureText || "");
+    if (!ok) setError("Copy failed in this browser. You can manually select and copy the output text.");
+  });
+
+  copyBatchBtn.addEventListener("click", async () => {
+    const ok = await copyToClipboard(lastBatchText || "");
+    if (!ok) setError("Copy failed in this browser. You can manually select and copy the output text.");
+  });
+
+  // -----------------------------
+  // Optional Reset (clears session data and entries)
+  // -----------------------------
+  clearSessionBtn.addEventListener("click", () => {
+    setError("");
+    sessionStorage.removeItem(STORAGE_KEY);
+
+    // Reset in-memory state
+    state.lecture = "";
+    state.batch = "Iris";
+    state.year = "4th year";
+    state.entries = [];
+
+    // Reset UI
+    syncUIFromState();
+    questionEl.value = "";
+    pageEl.value = "";
+
+    // Reset outputs
+    lastLectureText = "";
+    lastBatchText = "";
+    lectureOutEl.textContent = "";
+    batchOutEl.textContent = "";
+    enableOutputControls(false);
+
+    saveState();
+    updateBadge();
+  });
+
+  // Initialize outputs disabled
+  enableOutputControls(false);
+})();
+</script>
+</body>
+</html>
