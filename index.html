@@ -47,7 +47,7 @@
       margin:0 auto;
       padding:14px 18px 28px;
       display:grid;
-      grid-template-columns: 1fr; /* always vertical (Outputs under Inputs) */
+      grid-template-columns: 1fr;
       gap:14px;
     }
 
@@ -162,6 +162,7 @@
       color:#d8ffe6;
       border:1px solid rgba(124,255,166,.35);
     }
+
     .hint{
       font-size:12px;
       color:var(--muted);
@@ -221,11 +222,85 @@
       background: rgba(255,255,255,.05);
       color:#dbe6ff;
     }
-    .list{
+
+    /* Reset button under outputs */
+    .bottom-actions{
+      margin-top:14px;
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    /* ---------- Confirm Modal ---------- */
+    .modal{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      z-index: 9999;
+    }
+    .modal.show{ display:flex; }
+
+    .modal-card{
+      width:min(560px, 100%);
+      border-radius:18px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      box-shadow: 0 18px 55px rgba(0,0,0,.55);
+      overflow:hidden;
+    }
+    .modal-head{
+      padding:14px 16px 10px;
+      border-bottom:1px solid var(--border);
+      background: rgba(0,0,0,.14);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modal-title{
+      margin:0;
+      font-size:14px;
+      letter-spacing:.3px;
+      color:#dbe6ff;
+      font-weight:800;
+      text-transform:uppercase;
+    }
+    .modal-body{
+      padding:16px;
+      color:var(--text);
+    }
+    .modal-msg{
+      margin:0;
+      line-height:1.7;
+      color:#eaf0ff;
+      font-size:14px;
+      direction: rtl;
+      text-align: right;
+    }
+    .modal-sub{
       margin:10px 0 0;
-      padding-left:18px;
+      font-size:12px;
       color:var(--muted);
-      font-size:13px;
+      direction: rtl;
+      text-align: right;
+    }
+    .modal-actions{
+      padding:14px 16px 16px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      border-top:1px solid var(--border);
+      background: rgba(0,0,0,.10);
+    }
+    .modal-actions button{
+      min-width: 130px;
     }
   </style>
 </head>
@@ -296,9 +371,6 @@
       <div class="btns">
         <button id="saveBtn" type="button">Save Question</button>
         <button class="good" id="generateBtn" type="button">Generate Output</button>
-        <button class="secondary" id="clearSessionBtn" type="button" title="Optional: clears stored entries and session settings">
-          Reset App (optional)
-        </button>
       </div>
 
       <div class="hint">
@@ -310,7 +382,7 @@
     </div>
   </section>
 
-  <!-- Outputs (under inputs) -->
+  <!-- Outputs -->
   <section class="card" aria-label="Outputs">
     <div class="head">
       <h2>Outputs</h2>
@@ -337,14 +409,37 @@
         <pre id="batchOut" aria-label="Batch output"></pre>
       </div>
 
-      <ul class="list">
-        <li>Uses <b>###</b> between every question.</li>
-        <li>Uses <b>/////</b> between groups (lectures or batches).</li>
-        <li>Question text is inserted <b>unchanged</b>. The app does not parse or modify it.</li>
-      </ul>
+      <!-- Reset moved here -->
+      <div class="bottom-actions">
+        <button class="danger" id="clearSessionBtn" type="button">
+          Reset App
+        </button>
+      </div>
     </div>
   </section>
 </main>
+
+<!-- Confirm Modal -->
+<div class="modal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="modal-title" id="confirmTitle">Confirm Reset</h3>
+      <button class="secondary" id="closeModalBtn" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-msg">
+        هل أنت متأكد من رغبتك بحذف جميع البيانات ، ستفقد تقدمك ولا يمكن التراجع عن هذا القرار
+      </p>
+      <p class="modal-sub">
+        سيتم حذف كل الأسئلة المحفوظة وإعادة التطبيق للوضع الافتراضي.
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="cancelResetBtn" type="button">العودة للعمل</button>
+      <button class="danger" id="confirmResetBtn" type="button">نعم متأكد</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -359,7 +454,7 @@
     lecture: "",
     batch: "Iris",
     year: "5",
-    entries: [] // { lecture, batch, year, text, page }
+    entries: []
   };
 
   function loadState() {
@@ -408,6 +503,12 @@
   const countBadge = document.getElementById("countBadge");
   const errorBox = document.getElementById("errorBox");
 
+  // Modal DOM
+  const confirmModal = document.getElementById("confirmModal");
+  const confirmResetBtn = document.getElementById("confirmResetBtn");
+  const cancelResetBtn = document.getElementById("cancelResetBtn");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+
   // -----------------------------
   // Helpers
   // -----------------------------
@@ -451,8 +552,30 @@
     copyBatchBtn.disabled = !enabled;
   }
 
+  function openModal() {
+    confirmModal.classList.add("show");
+    // focus safe
+    cancelResetBtn.focus();
+  }
+  function closeModal() {
+    confirmModal.classList.remove("show");
+    clearSessionBtn.focus();
+  }
+
+  // Close modal on backdrop click
+  confirmModal.addEventListener("click", (e) => {
+    if (e.target === confirmModal) closeModal();
+  });
+
+  // Close modal on Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && confirmModal.classList.contains("show")) {
+      closeModal();
+    }
+  });
+
   // -----------------------------
-  // Output Builders (NO parsing, NO modification)
+  // Output Builders
   // -----------------------------
   function buildLectureOutput(entries) {
     const lectureOrder = [];
@@ -570,7 +693,7 @@
   });
 
   // -----------------------------
-  // Change Lecture (clears ONLY lecture name)
+  // Change Lecture
   // -----------------------------
   changeLectureBtn.addEventListener("click", () => {
     setError("");
@@ -618,9 +741,9 @@
   });
 
   // -----------------------------
-  // Optional Reset
+  // Reset flow (with confirmation modal)
   // -----------------------------
-  clearSessionBtn.addEventListener("click", () => {
+  function doReset() {
     setError("");
     sessionStorage.removeItem(STORAGE_KEY);
 
@@ -641,8 +764,21 @@
 
     saveState();
     updateBadge();
+  }
+
+  clearSessionBtn.addEventListener("click", () => {
+    openModal();
   });
 
+  confirmResetBtn.addEventListener("click", () => {
+    doReset();
+    closeModal();
+  });
+
+  cancelResetBtn.addEventListener("click", closeModal);
+  closeModalBtn.addEventListener("click", closeModal);
+
+  // Initialize outputs disabled
   enableCopyControls(false);
 })();
 </script>
