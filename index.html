@@ -223,7 +223,6 @@
       color:#dbe6ff;
     }
 
-    /* Reset button under outputs */
     .bottom-actions{
       margin-top:14px;
       display:flex;
@@ -321,7 +320,6 @@
     </div>
 
     <div class="body">
-      <!-- Batch then Year -->
       <div class="row two">
         <div>
           <label for="batch">Batch (persists unless changed)</label>
@@ -345,7 +343,6 @@
         </div>
       </div>
 
-      <!-- Lecture then Change Lecture then Page -->
       <div class="row three">
         <div>
           <label for="lecture">Lecture Name (persistent until “Change Lecture”)</label>
@@ -393,6 +390,7 @@
         <div class="toolbar">
           <div class="title">Output 1 — Grouped by Lecture</div>
           <div class="btns" style="margin:0;">
+            <button class="secondary" id="downloadLectureBtn" type="button" disabled>Download TXT</button>
             <button class="secondary" id="copyLectureBtn" type="button" disabled>Copy</button>
           </div>
         </div>
@@ -403,17 +401,15 @@
         <div class="toolbar">
           <div class="title">Output 2 — Grouped by Batch</div>
           <div class="btns" style="margin:0;">
+            <button class="secondary" id="downloadBatchBtn" type="button" disabled>Download TXT</button>
             <button class="secondary" id="copyBatchBtn" type="button" disabled>Copy</button>
           </div>
         </div>
         <pre id="batchOut" aria-label="Batch output"></pre>
       </div>
 
-      <!-- Reset moved here -->
       <div class="bottom-actions">
-        <button class="danger" id="clearSessionBtn" type="button">
-          Reset App
-        </button>
+        <button class="danger" id="clearSessionBtn" type="button">Reset App</button>
       </div>
     </div>
   </section>
@@ -445,9 +441,6 @@
 (() => {
   "use strict";
 
-  // -----------------------------
-  // Session State (sessionStorage)
-  // -----------------------------
   const STORAGE_KEY = "qOrganizer.session.v1";
 
   const defaultState = {
@@ -480,9 +473,7 @@
 
   const state = loadState();
 
-  // -----------------------------
   // DOM
-  // -----------------------------
   const lectureEl = document.getElementById("lecture");
   const batchEl = document.getElementById("batch");
   const yearEl = document.getElementById("year");
@@ -497,6 +488,8 @@
   const lectureOutEl = document.getElementById("lectureOut");
   const batchOutEl = document.getElementById("batchOut");
 
+  const downloadLectureBtn = document.getElementById("downloadLectureBtn");
+  const downloadBatchBtn = document.getElementById("downloadBatchBtn");
   const copyLectureBtn = document.getElementById("copyLectureBtn");
   const copyBatchBtn = document.getElementById("copyBatchBtn");
 
@@ -509,9 +502,7 @@
   const cancelResetBtn = document.getElementById("cancelResetBtn");
   const closeModalBtn = document.getElementById("closeModalBtn");
 
-  // -----------------------------
   // Helpers
-  // -----------------------------
   function setError(msg) {
     if (!msg) {
       errorBox.textContent = "";
@@ -524,6 +515,31 @@
 
   function updateBadge() {
     countBadge.textContent = `Saved: ${state.entries.length}`;
+  }
+
+  function filenameSafe(str) {
+    return (str || "output")
+      .replace(/[\/\\?%*:|"<>]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80) || "output";
+  }
+
+  function downloadText(filename, content) {
+    try {
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async function copyToClipboard(text) {
@@ -547,14 +563,15 @@
     }
   }
 
-  function enableCopyControls(enabled) {
+  function enableOutputControls(enabled) {
+    downloadLectureBtn.disabled = !enabled;
+    downloadBatchBtn.disabled = !enabled;
     copyLectureBtn.disabled = !enabled;
     copyBatchBtn.disabled = !enabled;
   }
 
   function openModal() {
     confirmModal.classList.add("show");
-    // focus safe
     cancelResetBtn.focus();
   }
   function closeModal() {
@@ -562,21 +579,15 @@
     clearSessionBtn.focus();
   }
 
-  // Close modal on backdrop click
   confirmModal.addEventListener("click", (e) => {
     if (e.target === confirmModal) closeModal();
   });
 
-  // Close modal on Escape
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && confirmModal.classList.contains("show")) {
-      closeModal();
-    }
+    if (e.key === "Escape" && confirmModal.classList.contains("show")) closeModal();
   });
 
-  // -----------------------------
   // Output Builders
-  // -----------------------------
   function buildLectureOutput(entries) {
     const lectureOrder = [];
     const map = new Map();
@@ -640,36 +651,20 @@
     return sections.join("\n/////\n");
   }
 
-  // -----------------------------
-  // Initialize UI from state
-  // -----------------------------
+  // Initialize UI
   function syncUIFromState() {
     lectureEl.value = state.lecture;
     batchEl.value = state.batch;
     yearEl.value = state.year;
     updateBadge();
   }
-
   syncUIFromState();
 
-  lectureEl.addEventListener("input", () => {
-    state.lecture = lectureEl.value;
-    saveState();
-  });
+  lectureEl.addEventListener("input", () => { state.lecture = lectureEl.value; saveState(); });
+  batchEl.addEventListener("change", () => { state.batch = batchEl.value; saveState(); });
+  yearEl.addEventListener("change", () => { state.year = yearEl.value; saveState(); });
 
-  batchEl.addEventListener("change", () => {
-    state.batch = batchEl.value;
-    saveState();
-  });
-
-  yearEl.addEventListener("change", () => {
-    state.year = yearEl.value;
-    saveState();
-  });
-
-  // -----------------------------
   // Save Question
-  // -----------------------------
   saveBtn.addEventListener("click", () => {
     setError("");
 
@@ -692,9 +687,7 @@
     updateBadge();
   });
 
-  // -----------------------------
   // Change Lecture
-  // -----------------------------
   changeLectureBtn.addEventListener("click", () => {
     setError("");
     state.lecture = "";
@@ -702,9 +695,7 @@
     saveState();
   });
 
-  // -----------------------------
   // Generate Output
-  // -----------------------------
   let lastLectureText = "";
   let lastBatchText = "";
 
@@ -712,7 +703,7 @@
     setError("");
 
     if (!state.entries.length) {
-      enableCopyControls(false);
+      enableOutputControls(false);
       lectureOutEl.textContent = "";
       batchOutEl.textContent = "";
       return setError("No saved questions yet. Save at least one question before generating output.");
@@ -724,12 +715,22 @@
     lectureOutEl.textContent = lastLectureText;
     batchOutEl.textContent = lastBatchText;
 
-    enableCopyControls(true);
+    enableOutputControls(true);
   });
 
-  // -----------------------------
+  // Download Buttons
+  downloadLectureBtn.addEventListener("click", () => {
+    const name = filenameSafe(state.lecture || "lecture-grouped");
+    const ok = downloadText(`${name} - grouped-by-lecture.txt`, lastLectureText || "");
+    if (!ok) setError("Download not supported in this browser. You can still copy the output text.");
+  });
+
+  downloadBatchBtn.addEventListener("click", () => {
+    const ok = downloadText(`grouped-by-batch.txt`, lastBatchText || "");
+    if (!ok) setError("Download not supported in this browser. You can still copy the output text.");
+  });
+
   // Copy Buttons
-  // -----------------------------
   copyLectureBtn.addEventListener("click", async () => {
     const ok = await copyToClipboard(lastLectureText || "");
     if (!ok) setError("Copy failed in this browser. You can manually select and copy the output text.");
@@ -740,9 +741,7 @@
     if (!ok) setError("Copy failed in this browser. You can manually select and copy the output text.");
   });
 
-  // -----------------------------
-  // Reset flow (with confirmation modal)
-  // -----------------------------
+  // Reset flow
   function doReset() {
     setError("");
     sessionStorage.removeItem(STORAGE_KEY);
@@ -760,26 +759,19 @@
     lastBatchText = "";
     lectureOutEl.textContent = "";
     batchOutEl.textContent = "";
-    enableCopyControls(false);
+    enableOutputControls(false);
 
     saveState();
     updateBadge();
   }
 
-  clearSessionBtn.addEventListener("click", () => {
-    openModal();
-  });
-
-  confirmResetBtn.addEventListener("click", () => {
-    doReset();
-    closeModal();
-  });
-
+  clearSessionBtn.addEventListener("click", openModal);
+  confirmResetBtn.addEventListener("click", () => { doReset(); closeModal(); });
   cancelResetBtn.addEventListener("click", closeModal);
   closeModalBtn.addEventListener("click", closeModal);
 
-  // Initialize outputs disabled
-  enableCopyControls(false);
+  // Initialize
+  enableOutputControls(false);
 })();
 </script>
 </body>
