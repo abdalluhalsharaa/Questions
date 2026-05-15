@@ -41,26 +41,16 @@
       align-items:center;
       flex-wrap:wrap;
     }
-    header p{
-      margin:0;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.45;
-    }
+
     .wrap{
       max-width:1200px;
       margin:0 auto;
       padding:14px 18px 28px;
       display:grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr; /* always vertical (Outputs under Inputs) */
       gap:14px;
     }
-    @media (min-width: 980px){
-      .wrap{
-        grid-template-columns: 1.1fr .9fr;
-        align-items:start;
-      }
-    }
+
     .card{
       background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
       border:1px solid var(--border);
@@ -127,15 +117,17 @@
       line-height:1.35;
     }
     input::placeholder, textarea::placeholder{ color: rgba(232,238,252,.45); }
+
     .row{
       display:grid;
       grid-template-columns: 1fr;
       gap:12px;
     }
     @media (min-width: 620px){
-      .row.two{ grid-template-columns: 1.2fr .8fr; }
-      .row.three{ grid-template-columns: 1fr 1fr 1fr; }
+      .row.two{ grid-template-columns: 1fr 1fr; }
+      .row.three{ grid-template-columns: 1.4fr .9fr .7fr; }
     }
+
     .btns{
       display:flex;
       flex-wrap:wrap;
@@ -188,14 +180,6 @@
     }
     .error.show{ display:block; }
 
-    /* Output blocks */
-    .out-controls{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
     .outbox{
       border:1px solid var(--border);
       border-radius:12px;
@@ -228,10 +212,6 @@
       white-space:pre-wrap;
       word-break:break-word;
     }
-    .small{
-      font-size:12px;
-      color:var(--muted);
-    }
     .kbd{
       font-family: var(--mono);
       font-size:12px;
@@ -240,12 +220,6 @@
       border-radius:8px;
       background: rgba(255,255,255,.05);
       color:#dbe6ff;
-    }
-    .footer-note{
-      margin-top:10px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.45;
     }
     .list{
       margin:10px 0 0;
@@ -258,18 +232,11 @@
 
 <body>
 <header>
-  <h1>
-    Structured Question Organizer
-    <span class="badge">Offline • GitHub Pages Ready</span>
-  </h1>
-  <p>
-    Paste <b>fully formatted questions</b> (question + options + correct answer + explanation). The app stores the text as an
-    <b>immutable raw string</b> and exports two formatted TXT files: grouped by <b>Lecture</b> and grouped by <b>Batch</b>.
-  </p>
+  <h1>Structured Question Organizer</h1>
 </header>
 
 <main class="wrap">
-  <!-- LEFT: Inputs -->
+  <!-- Inputs -->
   <section class="card" aria-label="Inputs">
     <div class="head">
       <h2>Inputs</h2>
@@ -279,19 +246,8 @@
     </div>
 
     <div class="body">
+      <!-- Batch then Year -->
       <div class="row two">
-        <div>
-          <label for="lecture">Lecture Name (persistent until “Change Lecture”)</label>
-          <input type="text" id="lecture" placeholder="e.g., Obstetrics — Vulva Blood Supply" autocomplete="off" />
-        </div>
-
-        <div>
-          <label for="page">Page Number (clears on save)</label>
-          <input type="number" id="page" min="0" step="1" placeholder="e.g., 35" />
-        </div>
-      </div>
-
-      <div class="row three">
         <div>
           <label for="batch">Batch (persists unless changed)</label>
           <select id="batch">
@@ -308,9 +264,17 @@
         <div>
           <label for="year">Year (persists unless changed)</label>
           <select id="year">
-            <option>4th year</option>
-            <option>5th year</option>
+            <option>5</option>
+            <option>6</option>
           </select>
+        </div>
+      </div>
+
+      <!-- Lecture then Change Lecture then Page -->
+      <div class="row three">
+        <div>
+          <label for="lecture">Lecture Name (persistent until “Change Lecture”)</label>
+          <input type="text" id="lecture" placeholder="e.g., Obstetrics — Vulva Blood Supply" autocomplete="off" />
         </div>
 
         <div>
@@ -318,6 +282,11 @@
           <button class="danger" id="changeLectureBtn" type="button" title="Clears ONLY lecture name">
             Change Lecture
           </button>
+        </div>
+
+        <div>
+          <label for="page">Page Number (clears on save)</label>
+          <input type="number" id="page" min="0" step="1" placeholder="e.g., 35" />
         </div>
       </div>
 
@@ -338,21 +307,13 @@
       </div>
 
       <div id="errorBox" class="error" role="alert"></div>
-
-      <div class="footer-note">
-        <b>Note:</b> This is fully offline. Nothing is uploaded anywhere. (Session persistence uses <span class="kbd">sessionStorage</span> only.)
-      </div>
     </div>
   </section>
 
-  <!-- RIGHT: Outputs -->
+  <!-- Outputs (under inputs) -->
   <section class="card" aria-label="Outputs">
     <div class="head">
       <h2>Outputs</h2>
-      <div class="out-controls">
-        <button class="secondary" id="downloadLectureBtn" type="button" disabled>Download Lecture TXT</button>
-        <button class="secondary" id="downloadBatchBtn" type="button" disabled>Download Batch TXT</button>
-      </div>
     </div>
 
     <div class="body">
@@ -397,7 +358,7 @@
   const defaultState = {
     lecture: "",
     batch: "Iris",
-    year: "4th year",
+    year: "5",
     entries: [] // { lecture, batch, year, text, page }
   };
 
@@ -407,11 +368,10 @@
       if (!raw) return structuredClone(defaultState);
       const parsed = JSON.parse(raw);
 
-      // Defensive normalization (no content parsing, just ensuring fields exist)
       return {
         lecture: typeof parsed.lecture === "string" ? parsed.lecture : "",
         batch: typeof parsed.batch === "string" ? parsed.batch : "Iris",
-        year: typeof parsed.year === "string" ? parsed.year : "4th year",
+        year: typeof parsed.year === "string" ? parsed.year : "5",
         entries: Array.isArray(parsed.entries) ? parsed.entries : []
       };
     } catch {
@@ -442,8 +402,6 @@
   const lectureOutEl = document.getElementById("lectureOut");
   const batchOutEl = document.getElementById("batchOut");
 
-  const downloadLectureBtn = document.getElementById("downloadLectureBtn");
-  const downloadBatchBtn = document.getElementById("downloadBatchBtn");
   const copyLectureBtn = document.getElementById("copyLectureBtn");
   const copyBatchBtn = document.getElementById("copyBatchBtn");
 
@@ -467,34 +425,7 @@
     countBadge.textContent = `Saved: ${state.entries.length}`;
   }
 
-  function filenameSafe(str) {
-    return (str || "output")
-      .replace(/[\/\\?%*:|"<>]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 80) || "output";
-  }
-
-  function downloadText(filename, content) {
-    // If download is not supported, outputs are still displayed in PRE blocks.
-    try {
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function copyToClipboard(text) {
-    // Modern clipboard API + fallback.
     try {
       await navigator.clipboard.writeText(text);
       return true;
@@ -515,18 +446,15 @@
     }
   }
 
-  function enableOutputControls(enabled) {
-    downloadLectureBtn.disabled = !enabled;
-    downloadBatchBtn.disabled = !enabled;
+  function enableCopyControls(enabled) {
     copyLectureBtn.disabled = !enabled;
     copyBatchBtn.disabled = !enabled;
   }
 
   // -----------------------------
-  // Output Builders (NO parsing, NO modification of question text)
+  // Output Builders (NO parsing, NO modification)
   // -----------------------------
   function buildLectureOutput(entries) {
-    // Group by lecture in order of first appearance.
     const lectureOrder = [];
     const map = new Map();
 
@@ -545,7 +473,6 @@
       secLines.push(lecture);
 
       for (const e of map.get(lecture)) {
-        // Insert raw question text EXACTLY as stored
         secLines.push(e.text);
         secLines.push(`${e.batch} - ${e.year}`);
         secLines.push(`P(${e.page})`);
@@ -559,7 +486,6 @@
   }
 
   function buildBatchOutput(entries) {
-    // Group by batch-year in order of first appearance.
     const order = [];
     const map = new Map();
 
@@ -576,7 +502,7 @@
     for (const key of order) {
       const secLines = [];
       secLines.push(key);
-      secLines.push(""); // spacing after header
+      secLines.push("");
 
       for (const e of map.get(key)) {
         secLines.push(e.text);
@@ -603,9 +529,8 @@
 
   syncUIFromState();
 
-  // Keep persistent inputs in sync with state
   lectureEl.addEventListener("input", () => {
-    state.lecture = lectureEl.value; // no trimming
+    state.lecture = lectureEl.value;
     saveState();
   });
 
@@ -625,33 +550,21 @@
   saveBtn.addEventListener("click", () => {
     setError("");
 
-    const lecture = lectureEl.value; // keep as-is
+    const lecture = lectureEl.value;
     const batch = batchEl.value;
     const year = yearEl.value;
-    const text = questionEl.value;   // RAW TEXT ONLY
-    const page = pageEl.value;       // keep as string/number input; output expects what's entered
+    const text = questionEl.value;
+    const page = pageEl.value;
 
-    // Minimal validation (does not modify question content)
     if (!lecture) return setError("Lecture Name is required (it persists until you click “Change Lecture”).");
     if (!text) return setError("Question Input is empty. Paste the FULL formatted question first.");
     if (page === "" || page === null) return setError("Page Number is required.");
 
-    state.entries.push({
-      lecture,
-      batch,
-      year,
-      text,  // stored exactly as textarea value
-      page
-    });
+    state.entries.push({ lecture, batch, year, text, page });
 
-    // After save:
-    // - Clear ONLY question + page
     questionEl.value = "";
     pageEl.value = "";
 
-    // - Lecture remains unchanged
-    // - Batch and Year remain unchanged
-    // State already holds them.
     saveState();
     updateBadge();
   });
@@ -664,7 +577,6 @@
     state.lecture = "";
     lectureEl.value = "";
     saveState();
-    // Does NOT clear saved questions, batch, or year
   });
 
   // -----------------------------
@@ -677,7 +589,7 @@
     setError("");
 
     if (!state.entries.length) {
-      enableOutputControls(false);
+      enableCopyControls(false);
       lectureOutEl.textContent = "";
       batchOutEl.textContent = "";
       return setError("No saved questions yet. Save at least one question before generating output.");
@@ -689,21 +601,7 @@
     lectureOutEl.textContent = lastLectureText;
     batchOutEl.textContent = lastBatchText;
 
-    enableOutputControls(true);
-  });
-
-  // -----------------------------
-  // Download Buttons
-  // -----------------------------
-  downloadLectureBtn.addEventListener("click", () => {
-    const name = filenameSafe(state.lecture || "lecture-grouped");
-    const ok = downloadText(`${name} - grouped-by-lecture.txt`, lastLectureText || "");
-    if (!ok) setError("Download not supported in this browser. You can still copy the output from the text blocks.");
-  });
-
-  downloadBatchBtn.addEventListener("click", () => {
-    const ok = downloadText(`grouped-by-batch.txt`, lastBatchText || "");
-    if (!ok) setError("Download not supported in this browser. You can still copy the output from the text blocks.");
+    enableCopyControls(true);
   });
 
   // -----------------------------
@@ -720,36 +618,32 @@
   });
 
   // -----------------------------
-  // Optional Reset (clears session data and entries)
+  // Optional Reset
   // -----------------------------
   clearSessionBtn.addEventListener("click", () => {
     setError("");
     sessionStorage.removeItem(STORAGE_KEY);
 
-    // Reset in-memory state
     state.lecture = "";
     state.batch = "Iris";
-    state.year = "4th year";
+    state.year = "5";
     state.entries = [];
 
-    // Reset UI
     syncUIFromState();
     questionEl.value = "";
     pageEl.value = "";
 
-    // Reset outputs
     lastLectureText = "";
     lastBatchText = "";
     lectureOutEl.textContent = "";
     batchOutEl.textContent = "";
-    enableOutputControls(false);
+    enableCopyControls(false);
 
     saveState();
     updateBadge();
   });
 
-  // Initialize outputs disabled
-  enableOutputControls(false);
+  enableCopyControls(false);
 })();
 </script>
 </body>
